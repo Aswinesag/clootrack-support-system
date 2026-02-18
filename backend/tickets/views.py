@@ -9,6 +9,7 @@ from django.db.models import Count, Avg
 from django.db.models.functions import TruncDate
 from .models import Ticket
 from .serializers import TicketSerializer
+from django.conf import settings
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -71,7 +72,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
             prompt = f"""
                         You are a support ticket classifier.
@@ -104,9 +105,11 @@ class TicketViewSet(viewsets.ModelViewSet):
                 "suggested_priority": parsed.get("suggested_priority")
             })
 
-        except Exception:
-            # Graceful failure
+        except Exception as e:
+            print("LLM ERROR:", str(e))
+
             return Response({
                 "suggested_category": None,
-                "suggested_priority": None
+                "suggested_priority": None,
+                "llm_error": "LLM service unavailable"
             })
