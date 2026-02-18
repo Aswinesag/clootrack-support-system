@@ -1,3 +1,5 @@
+import os
+from openai import OpenAI
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -57,3 +59,54 @@ class TicketViewSet(viewsets.ModelViewSet):
             "priority_breakdown": priority_breakdown,
             "category_breakdown": category_breakdown,
         })
+
+    @action(detail=False, methods=['post'], url_path='classify')
+    def classify(self, request):
+        description = request.data.get("description")
+
+        if not description:
+            return Response(
+                {"error": "Description is required"},
+                status=400
+            )
+
+        try:
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            prompt = f"""
+                        You are a support ticket classifier.
+
+                        Given the ticket description below, return ONLY valid JSON with:
+                        - suggested_category (billing, technical, account, general)
+                        - suggested_priority (low, medium, high, critical)
+
+                        Do not include explanations.
+
+                        Description:
+                        \"\"\"{description}\"\"\"
+                        """
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0
+            )
+
+            content = response.choices[0].message.content
+
+            import json
+            parsed = json.loads(content)
+
+            return Response({
+                "suggested_category": parsed.get("suggested_category"),
+                "suggested_priority": parsed.get("suggested_priority")
+            })
+
+        except Exception:
+            # Graceful failure
+            return Response({
+                "suggested_category": None,
+                "suggested_priority": None
+            })
