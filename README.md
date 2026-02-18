@@ -247,10 +247,6 @@ docker compose build --no-cache
 5. Run the test suite
 6. Submit a pull request
 
-## License
-
-This project is part of an internship assessment and is for educational purposes.
-
 ## Acknowledgments
 
 - Groq AI for providing the LLM API for ticket classification
