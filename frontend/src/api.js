@@ -24,6 +24,18 @@ export async function classifyDescription(description) {
 }
 
 export async function getStats() {
-  const res = await fetch(`${API_BASE}/tickets/stats/`);
+  const res = await fetch("http://127.0.0.1:8000/api/tickets/stats/");
+  return res.json();
+}
+
+export async function updateTicket(id, data) {
+  const res = await fetch(`${API_BASE}/tickets/${id}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
   return res.json();
 }

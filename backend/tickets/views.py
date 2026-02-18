@@ -1,5 +1,5 @@
 import os
-from openai import OpenAI
+from groq import Groq
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -66,39 +66,58 @@ class TicketViewSet(viewsets.ModelViewSet):
         description = request.data.get("description")
 
         if not description:
-            return Response(
-                {"error": "Description is required"},
-                status=400
-            )
+            return Response({"error": "Description is required"}, status=400)
 
         try:
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            client = Groq(api_key=settings.GROQ_API_KEY)
 
             prompt = f"""
-                        You are a support ticket classifier.
+            You are a support ticket classifier.
 
-                        Given the ticket description below, return ONLY valid JSON with:
-                        - suggested_category (billing, technical, account, general)
-                        - suggested_priority (low, medium, high, critical)
+            Return ONLY valid JSON:
+            {{
+                "suggested_category": "billing|technical|account|general",
+                "suggested_priority": "low|medium|high|critical"
+            }}
 
-                        Do not include explanations.
-
-                        Description:
-                        \"\"\"{description}\"\"\"
-                        """
+            Description:
+            {description}
+            """
 
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                model="llama-3.3-70b-versatile",  # very good model
+                messages=[{"role": "user", "content": prompt}],
                 temperature=0
             )
 
-            content = response.choices[0].message.content
+            content = response.choices[0].message.content.strip()
+
+            if not content:
+                return Response({
+                    "suggested_category": None,
+                    "suggested_priority": None,
+                    "llm_error": "Empty response from LLM"
+                })
+
+            # Remove markdown code blocks if present
+            if content.startswith('```'):
+                lines = content.split('\n')
+                # Remove first line (``` or ```json) and last line (```)
+                if len(lines) > 2:
+                    content = '\n'.join(lines[1:-1]).strip()
+                else:
+                    content = content.replace('```', '').strip()
 
             import json
-            parsed = json.loads(content)
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError as e:
+                print("JSON PARSE ERROR:", str(e), "Content:", content)
+                return Response({
+                    "suggested_category": None,
+                    "suggested_priority": None,
+                    "llm_error": "Invalid JSON response from LLM"
+                })
 
             return Response({
                 "suggested_category": parsed.get("suggested_category"),
