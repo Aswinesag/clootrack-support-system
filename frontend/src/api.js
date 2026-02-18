@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 export async function getTickets(params = "") {
   const res = await fetch(`${API_BASE}/tickets/${params}`);
@@ -24,7 +24,7 @@ export async function classifyDescription(description) {
 }
 
 export async function getStats() {
-  const res = await fetch("http://127.0.0.1:8000/api/tickets/stats/");
+  const res = await fetch(`${API_BASE}/tickets/stats/`);
   return res.json();
 }
 
